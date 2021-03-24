@@ -1,0 +1,3 @@
+include ':Library_verticalTextView'
+include ':app'
+rootProject.name = "VerticalTextView"
