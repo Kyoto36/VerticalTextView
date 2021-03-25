@@ -33,31 +33,26 @@ class VerticalTextView @JvmOverloads constructor(
         }
         var startX = 0f
         var startY = 0f
-        val baseLine = getBaseLine()
         var charWidthAndHeight: WidthAndHeight
         val tempWidthAndHeight = getCharWidthAndHeight('正')
+        var baseLine : Float
         var charMaxWidth = tempWidthAndHeight.width
         for (i in mText!!.indices) {
             charWidthAndHeight = getCharWidthAndHeight(mText!![i])
+            baseLine = charWidthAndHeight.height - mPaint.fontMetrics.bottom
             charMaxWidth = if (charWidthAndHeight.width > charMaxWidth) charWidthAndHeight.width else charMaxWidth
-            if (startY > measuredHeight && startX > measuredWidth) {
+            if (startY + charWidthAndHeight.height > measuredHeight && startX + tempWidthAndHeight.width > measuredWidth) {
                 break
             }
-            canvas.drawText(mText!![i].toString(), startX, startY + baseLine, mPaint)
+
             if (startY + charWidthAndHeight.height > measuredHeight) {
                 charMaxWidth = tempWidthAndHeight.width
                 startY = 0f
                 startX += charMaxWidth
             }
-            else{
-                startY += charWidthAndHeight.height
-            }
+            canvas.drawText(mText!![i].toString(), startX, startY + baseLine, mPaint)
+            startY += charWidthAndHeight.height
         }
-    }
-
-    private fun getBaseLine(): Float{
-        val height = mPaint.fontMetrics.bottom - mPaint.fontMetrics.top
-        return height - mPaint.fontMetrics.bottom
     }
 
     private fun getCharWidthAndHeight(char: Char): WidthAndHeight{
