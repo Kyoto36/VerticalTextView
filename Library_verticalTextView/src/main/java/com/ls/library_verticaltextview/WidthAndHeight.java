@@ -4,7 +4,15 @@ public final class WidthAndHeight {
     private float width;
     private float height;
 
+    public WidthAndHeight() {
+    }
+
     public WidthAndHeight(float width, float height) {
+        this.width = width;
+        this.height = height;
+    }
+
+    public void setWidthAndHeight(float width, float height){
         this.width = width;
         this.height = height;
     }

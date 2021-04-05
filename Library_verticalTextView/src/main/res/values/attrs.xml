@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <declare-styleable name="VerticalTextView">
+        <attr name="textColor" format="color|reference"/>
+        <attr name="hintColor" format="color|reference"/>
+        <attr name="textSize" format="dimension|reference"/>
+        <attr name="text" format="string|reference"/>
+        <attr name="hint" format="string|reference"/>
+        <attr name="lineSpace" format="dimension|reference"/>
+        <attr name="wordSpace" format="dimension|reference"/>
+    </declare-styleable>
+</resources>
