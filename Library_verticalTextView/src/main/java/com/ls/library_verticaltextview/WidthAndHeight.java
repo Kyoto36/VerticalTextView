@@ -1,6 +1,6 @@
 package com.ls.library_verticaltextview;
 
-public final class WidthAndHeight {
+public final class WidthAndHeight {   
     private float width;
     private float height;
 
