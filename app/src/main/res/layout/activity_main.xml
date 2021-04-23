@@ -9,20 +9,29 @@
     <com.ls.library_verticaltextview.VerticalTextView
         android:id="@+id/verticalTextView"
         android:layout_width="0dp"
-        android:layout_height="0dp"
+        android:layout_height="200dp"
         app:layout_constraintStart_toStartOf="parent"
         app:layout_constraintEnd_toEndOf="parent"
         app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintBottom_toBottomOf="parent"
         android:padding="20dp"
         android:background="@android:color/holo_blue_light"
         app:text="法赫卡里风华绝代看"
         app:hint="看见就会更健康"
         app:textColor="#FF0000"
         app:hintColor="#666999"
-        app:textSize="40sp"
-        app:wordSpace="20dp"
-        app:lineSpace="100dp"/>
+        app:textSize="18sp"
+        app:wordSpace="5dp"
+        app:lineSpace="5dp"
+        app:gravity="r2l"
+        app:fixSize="2"/>
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="200dp"
+        android:text="哈是江东父老开始就对了就啊但是分开了饭，\ndfjklasjdfladfjslka阿斯顿克己复礼看\nadfsjkljasdd"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toBottomOf="@id/verticalTextView"
+        android:gravity="center"/>
 
 
 </androidx.constraintlayout.widget.ConstraintLayout>

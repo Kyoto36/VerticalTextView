@@ -8,5 +8,17 @@
         <attr name="hint" format="string|reference"/>
         <attr name="lineSpace" format="dimension|reference"/>
         <attr name="wordSpace" format="dimension|reference"/>
+        <attr name="gravity">
+            <!-- 文字从左至右排版 -->
+            <flag name="l2r" value="0" />
+            <!-- 文字从右至左排版 -->
+            <flag name="r2l" value="1" />
+        </attr>
+        <!-- 固定文字个数 -->
+        <attr name="fixSize" format="integer"/>
+        <!-- 字体 -->
+        <attr name="typeface" format="string"/>
+        <!-- 是否去掉字体自带的内边距 -->
+        <attr name="includeFontPadding" format="boolean"/>
     </declare-styleable>
 </resources>

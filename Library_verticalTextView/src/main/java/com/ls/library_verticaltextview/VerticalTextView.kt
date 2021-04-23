@@ -1,21 +1,22 @@
-package com.ls.library_verticaltextview
+package com.ls.library_verticaltextview;
 
 import android.content.Context
 import android.content.res.Resources
 import android.graphics.Canvas
 import android.graphics.Color
 import android.graphics.Paint
+import android.graphics.Typeface
+import android.text.TextPaint
 import android.text.TextUtils
 import android.util.AttributeSet
 import android.util.Log
 import android.view.View
-import org.w3c.dom.Text
-import kotlin.math.max
+import com.ls.library_verticaltextview.R
 
 class VerticalTextView @JvmOverloads constructor(
     context: Context, attrs: AttributeSet? = null, defStyleAttr: Int = 0
 ) : View(context, attrs, defStyleAttr) {
-    private val mPaint: Paint = Paint()
+    private val mPaint: Paint = TextPaint()
     private var mText: String? = null
     private var mHint: String? = null
     private var mTextColor: Int = Color.BLACK
@@ -23,6 +24,12 @@ class VerticalTextView @JvmOverloads constructor(
     private var mParentAllocateSize = WidthAndHeight()
     private var mWordSpace = 0F
     private var mLineSpace = 0F
+    private var mGravity = GRAVITY_LEFT
+    private var mFixSize = 0
+    private var mTypeface: Typeface? = null
+    private var mIncludePad = true
+
+    private var mLineTexts = ArrayList<LineText>()
 
     init {
         mPaint.isAntiAlias = true
@@ -35,12 +42,26 @@ class VerticalTextView @JvmOverloads constructor(
         mHint = ta.getString(R.styleable.VerticalTextView_hint)
         mWordSpace = ta.getDimension(R.styleable.VerticalTextView_wordSpace,mWordSpace)
         mLineSpace = ta.getDimension(R.styleable.VerticalTextView_lineSpace,mLineSpace)
+        mGravity = ta.getInt(R.styleable.VerticalTextView_gravity,mGravity)
+        mFixSize = ta.getInt(R.styleable.VerticalTextView_fixSize,mFixSize)
+        mIncludePad = ta.getBoolean(R.styleable.VerticalTextView_includeFontPadding,mIncludePad)
+        val assetPath = ta.getString(R.styleable.VerticalTextView_typeface)
+        if(!TextUtils.isEmpty(assetPath)) {
+            mTypeface = Typeface.createFromAsset(context.assets, assetPath)
+        }
         ta.recycle()
+        if(mTypeface != null){
+            mPaint.typeface = mTypeface
+        }
     }
 
     fun setText(text: String){
         mText = text
         requestLayout()
+    }
+
+    fun getText(): String?{
+        return mText
     }
 
     fun setTextColor(color: Int){
@@ -76,6 +97,44 @@ class VerticalTextView @JvmOverloads constructor(
         if(TextUtils.isEmpty(mText) && !TextUtils.isEmpty(mHint)){ // 如果mText为空，并且mHint不为空，那就立即重新绘制，以显示新的mHintColor
             requestLayout()
         }
+    }
+
+    /**
+     * 设置字体
+     * @param typeface Typeface?
+     */
+    fun setTypeface(typeface: Typeface?){
+        mTypeface = typeface
+        if(mTypeface != null){
+            mPaint.typeface = mTypeface
+            requestLayout()
+        }
+    }
+
+    /**
+     * 获取画笔
+     * @return Paint
+     */
+    fun getPaint(): Paint{
+        return mPaint
+    }
+
+    /**
+     * 是否包含字体自带内边距
+     * @param includepad Boolean
+     */
+    fun setIncludeFontPadding(includepad : Boolean){
+        mIncludePad = includepad
+        requestLayout()
+    }
+
+    /**
+     *
+     * 获取固定的文字个数
+     * @return Int
+     */
+    fun getFixSize():Int{
+        return mFixSize
     }
 
     /**
@@ -124,11 +183,7 @@ class VerticalTextView @JvmOverloads constructor(
         val heightMode = MeasureSpec.getMode(heightMeasureSpec)
         var heightSize = MeasureSpec.getSize(heightMeasureSpec)
         mParentAllocateSize.setWidthAndHeight(widthSize.toFloat(),heightSize.toFloat())
-        if(widthMode == MeasureSpec.EXACTLY && heightMode == MeasureSpec.EXACTLY){
-            Log.d("VerticalTextView","固定大小 $widthSize $heightSize")
-            setMeasuredDimension(widthSize,heightSize)
-            return
-        }
+
         val textSize = getTextSize(
             if(TextUtils.isEmpty(mText)) mHint else mText,
             if(widthMode == MeasureSpec.UNSPECIFIED) -1 else widthSize - paddingLeft - paddingRight, // UNSPECIFIED不限定；限定最大宽度不能超过父容器提供的宽度减去左右内边距
@@ -164,6 +219,12 @@ class VerticalTextView @JvmOverloads constructor(
         val tempWidthAndHeight = getTempCharWidthAndHeight()
         var char: Char
         var charMaxWidth = tempWidthAndHeight.width
+        var lineNum = 0
+        var line = if(mLineTexts.size <= lineNum)  {
+            val temp = LineText()
+            mLineTexts.add(temp)
+            temp
+        } else mLineTexts[lineNum].clear()
         for (i in text!!.indices) {
             char = text[i]
             charWidthAndHeight = getCharWidthAndHeight(char)
@@ -174,29 +235,41 @@ class VerticalTextView @JvmOverloads constructor(
                 charMaxWidth = 0F
                 break
             }
+            if(mFixSize in 1 .. i){
+                break
+            }
             charMaxWidth = Math.max(charMaxWidth,charWidthAndHeight.width) // 本行字中宽度最大的
             if(char == '\n' || (maxHeight > 0 && (currHeight + charWidthAndHeight.height) > maxHeight)){ // 如果当前字符是换行符或者剩余高度已经不能显示下当前字符，那就换列
                 // 如果最大高度小于0，说明测量模式是MeasureSpec.UNSPECIFIED，那就不用在意最大限定高度了，直接取历史最大高度和当前列的高度的最大值，
                 // 否则比完历史高度与当前列的高度最大值，然后再拿最大值与最大限定高度比最小值
                 heightSize = if(maxHeight < 0) Math.max(heightSize,currHeight) else Math.min(Math.max(heightSize,currHeight), maxHeight.toFloat())
-                currHeight = 0F
                 currWidth += charMaxWidth + mLineSpace // 加上行间距
+                line.setWidthAndHeight(charMaxWidth,if(currHeight > mWordSpace) currHeight - mWordSpace else currHeight)
+                lineNum++
+                line = if(mLineTexts.size <= lineNum)  {
+                    val temp = LineText()
+                    mLineTexts.add(temp)
+                    temp
+                } else mLineTexts[lineNum].clear()
+                currHeight = 0F
                 if(char == '\n') { // 如果当前字符是换行符，那就不用统计其高度
                     continue
                 }
             }
+            line.addChar(char)
             currHeight += charWidthAndHeight.height + mWordSpace // 加上字间距
         }
         // 最后一行也要统计在其中
         heightSize = if(maxHeight < 0) Math.max(heightSize,currHeight) else Math.min(Math.max(heightSize,currHeight), maxHeight.toFloat())
         currWidth += charMaxWidth
+        line.setWidthAndHeight(charMaxWidth,if(currHeight > mWordSpace) currHeight - mWordSpace else currHeight)
         // 如果最大宽度小于0，说明测量模式是MeasureSpec.UNSPECIFIED，那就不用在意最大限定宽度了，直接取测量的宽度
         // 否则那测量宽度和最大限定宽度取最小值
         widthSize = if(maxWidth < 0) currWidth else Math.min(currWidth,maxWidth.toFloat())
         Log.d("VerticalTextView","maxWidth $maxWidth currWidth $currWidth maxHeight $maxHeight heightSize $heightSize")
         return WidthAndHeight(widthSize, heightSize)
     }
-    
+
     override fun onDraw(canvas: Canvas?) {
         super.onDraw(canvas)
         if(canvas == null){
@@ -216,32 +289,57 @@ class VerticalTextView @JvmOverloads constructor(
 
     private fun drawText(canvas: Canvas,paint: Paint,text: String){
         Log.d("VerticalTextView","draw measure $measuredWidth $measuredHeight")
-        var startX = paddingLeft.toFloat()
+        Log.d(Companion.TAG, "drawText: mLineTexts = $mLineTexts")
+        var startX = if(mGravity == GRAVITY_LEFT) paddingLeft.toFloat() else measuredWidth - paddingRight.toFloat()
         var startY = paddingTop.toFloat()
         var charWidthAndHeight: WidthAndHeight
         val tempWidthAndHeight = getTempCharWidthAndHeight()
         var baseLine : Float
         var charMaxWidth = tempWidthAndHeight.width
-        var char: Char
-        for (i in text.indices) {
-            char = text[i]
-            charWidthAndHeight = getCharWidthAndHeight(char)
-            baseLine = charWidthAndHeight.height - paint.fontMetrics.bottom // 获取每个字的基线
-            charMaxWidth = if (charWidthAndHeight.width > charMaxWidth) charWidthAndHeight.width else charMaxWidth // 本行字中宽度最大的
-            if (startY + charWidthAndHeight.height + paddingBottom > measuredHeight && startX + charMaxWidth + paddingRight > measuredWidth) { // 如果高度和高度都超过限制那就不继续绘制了
-                break
-            }
-            if (char == '\n' || startY + charWidthAndHeight.height + paddingBottom > measuredHeight) { // 如果只是高度超过限制，那就另起一列继续绘制
-                startY = paddingTop.toFloat()
-                startX += (charMaxWidth + mLineSpace)  //加上当前行的宽度与行间距
-                charMaxWidth = tempWidthAndHeight.width
-            }
-            if(char == '\n'){
+        for (line in  mLineTexts){
+            if(line == null || line.width <= 0){
                 continue
             }
-            canvas.drawText(char.toString(), startX, startY + baseLine, paint)
-            startY += (charWidthAndHeight.height + mWordSpace) // 绘制完之后下一个字的开始位置就是现在的开始位置加上现在的字的高度和字间距
+            if(mGravity == GRAVITY_RIGHT){
+                // 从右至左需要在本行开始是用上一行的开始位置减去本行宽度
+                startX  -= line.width
+            }
+            for (char in line.text){
+                charWidthAndHeight = getCharWidthAndHeight(char)
+                // 获取每个字的基线，如果去掉字体自带边距就是用descent 否则用bottom 配合 getCharWidthAndHeight
+                baseLine = charWidthAndHeight.height - (if(!mIncludePad) paint.fontMetrics.descent else paint.fontMetrics.bottom)
+                canvas.drawText(char.toString(), startX, startY + baseLine, paint)
+                startY += (charWidthAndHeight.height + mWordSpace) // 绘制完之后下一个字的开始位置就是现在的开始位置加上现在的字的高度和字间距
+            }
+            if(mGravity == GRAVITY_LEFT) {
+                // 从左至右排版，下一行的开始位置在 本行开始位置 + 本行宽度 + 行间距
+                startX += line.width + mLineSpace
+            }
+            else{
+                // 从右至左排版，下一行的开始位置 - 行间距 - 下一行的宽度 （因为在当前行获取不到下一行的宽度，就只减一个行间距，下一行的宽度在下一行的循环开始获取）
+                startX -= (mLineSpace)
+            }
+            startY = paddingTop.toFloat()
         }
+//        for (i in text.indices) {
+//            char = text[i]
+//            charWidthAndHeight = getCharWidthAndHeight(char)
+//            baseLine = charWidthAndHeight.height - paint.fontMetrics.bottom // 获取每个字的基线
+//            charMaxWidth = if (charWidthAndHeight.width > charMaxWidth) charWidthAndHeight.width else charMaxWidth // 本行字中宽度最大的
+//            if (startY + charWidthAndHeight.height + paddingBottom > measuredHeight && startX + charMaxWidth + paddingRight > measuredWidth) { // 如果高度和高度都超过限制那就不继续绘制了
+//                break
+//            }
+//            if (char == '\n' || startY + charWidthAndHeight.height + paddingBottom > measuredHeight) { // 如果只是高度超过限制，那就另起一列继续绘制
+//                startY = paddingTop.toFloat()
+//                startX += (charMaxWidth + mLineSpace)  //加上当前行的宽度与行间距
+//                charMaxWidth = tempWidthAndHeight.width
+//            }
+//            if(char == '\n'){
+//                continue
+//            }
+//            canvas.drawText(char.toString(), startX, startY + baseLine, paint)
+//            startY += (charWidthAndHeight.height + mWordSpace) // 绘制完之后下一个字的开始位置就是现在的开始位置加上现在的字的高度和字间距
+//        }
     }
 
     private fun getTempCharWidthAndHeight(): WidthAndHeight{
@@ -249,7 +347,8 @@ class VerticalTextView @JvmOverloads constructor(
     }
 
     private fun getCharWidthAndHeight(char: Char): WidthAndHeight{
-        val height = mPaint.fontMetrics.bottom - mPaint.fontMetrics.top
+        // 如果去掉字体自带内边距，使用 descent - ascent 否则使用 bottom - top
+        val height = if(!mIncludePad) mPaint.fontMetrics.descent - mPaint.fontMetrics.ascent else mPaint.fontMetrics.bottom - mPaint.fontMetrics.top
         val widths = FloatArray(1)
         mPaint.getTextWidths(char.toString(),widths)
         val width = widths[0]
@@ -258,5 +357,11 @@ class VerticalTextView @JvmOverloads constructor(
 
     private fun sp2px(sp: Float): Float{
         return (sp * Resources.getSystem().displayMetrics.scaledDensity)
+    }
+
+    companion object {
+        private const val TAG = "VerticalTextView"
+        private const val GRAVITY_LEFT = 0
+        private const val GRAVITY_RIGHT = 1
     }
 }
